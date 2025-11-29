@@ -1,0 +1,114 @@
+Cahier des procédures – Ordre chronologique des tâches de développement jusqu’à la mise en production
+
+Étape 1 – Création du repository et configuration initiale  (passeer cette etape pour le moment)
+- Initialiser un repo Git privé sur GitHub avec .gitignore Laravel + Jetstream.  
+- Cloner localement, installer Laravel 12 via Composer, activer Jetstream avec stack Inertia + Vue 3.  
+- Créer deux branches : main (prod) et develop (intégration).  
+- Commit initial “chore: Laravel 12 + Jetstream skeleton”.
+
+Étape 2 – Préparation des environnements  
+- Dupliquer .env en .env.sandbox et .env.production.  
+- Remplir les clés APP_NAME, APP_KEY, APP_URL distinctes pour chaque environnement.  
+- Ajouter les variables spécifiques :  
+  – FDP_SANDBOX_SECRET, FDP_LIVE_SECRET, FDP_WEBHOOK_SECRET, FDP_MIN_PAYOUT, FDP_MAX_TXN.  
+- Verrouiller les fichiers .env.* dans le repo via git-secret ou ansible-vault.
+
+Étape 3 – Schéma de base de données et migrations  
+- Créer la migration 0001_create_currencies_table (code, name, decimals, symbol).  
+- Créer 0002_create_users_table (Laravel default + role, status, default_currency).  
+- Créer 0003_create_customers_table.  
+- Créer 0004_create_transactions_table (uuid unique index, status enum, amount en cents).  
+- Créer 0005_create_refunds_table.  
+- Créer 0006_create_payouts_table.  
+- Créer 0007_create_webhook_endpoints_table.  
+- Créer 0008_create_webhook_events_table.  
+- Créer 0009_create_api_keys_table (key hash, scope enum).  
+- Créer 0010_create_fees_table.  
+- Créer 0011_create_bank_accounts_table.  
+- Créer 0012_create_audit_logs_table (morphs, old_values, new_values JSON).  
+- Créer 0013_create_currency_limits_table (anti-fraude).  
+- Exécuter php artisan migrate sur base sandbox locale.
+
+Étape 4 – Modèles Eloquent et relations  
+- Générer les modèles User, Customer, Transaction, Refund, Payout, WebhookEndpoint, WebhookEvent, ApiKey, Fee, BankAccount, AuditLog, Currency, CurrencyLimit avec casts et $fillable complets.  
+- Définir les relations : User hasMany Transaction, Transaction hasMany Refund, User hasMany WebhookEndpoint, etc.  
+- Ajouter traits HasUuids sur Transaction, Refund, Payout, WebhookEvent.  
+- Écrire les tests unitaires Pest pour chaque relation et cast.
+
+Étape 5 – Configuration Sanctum et multi-guard  
+- Publier la config Sanctum.  
+- Créer un guard “merchant” utilisant le modèle User et provider users.  
+- Middleware EnsureApiIsStateful et scope.check.  
+- Tests : génération de token, vérification des scopes sandbox/live.
+
+Étape 6 – Services métier (app/Services)  
+- TransactionService : createIntent(), processPayment(), applyFees(), calculateNet().  
+- PaymentGatewayService : interface + implémentations SandboxGateway et LiveGateway.  
+- WebhookService : sign(), send(), verifySignature().  
+- PayoutService : debitBalance(), sendToProvider(), retryOnFailure().  
+- AntiFraudService : velocityCheck(), blacklistCheck(), riskScore().  
+- Coverage Pest > 80 % pour chaque service.
+
+Étape 7 – Contrôleurs API (Api/V1)  
+- Générer via artisan make:controller --api pour : Customer, Transaction, Refund, Payout, Balance, WebhookEndpoint.  
+- Implémenter FormRequest avec règles de validation et autorisation.  
+- Ressource TransactionResource avec wraps et liens HATEOAS.  
+- Pagination via cursor (id > last_id) pour performances.  
+- Tests Feature : 200, 401, 403, 422 sur chaque endpoint.
+
+Étape 8 – Jobs et queues  
+- SendWebhookJob (queue : webhooks, retry 3, backoff exponential).  
+- ProcessPayoutJob (queue : payouts, retry 5).  
+- AntiFraudCheckJob (queue : default, delay 0).  
+- BroadcastTransactionEventJob (si besoin websocket interne).  
+- Horizon installé et configuré pour monitoring.
+
+Étape 9 – Providers de paiement (carte & mobile-money)  
+- Créer un driver “card” mock en sandbox qui retourne toujours success sauf si amount = 777.  
+- Créer un driver “mobile-money” mock qui simule OTP.  
+- Pour la production, packages externes sécurisés via Laravel Packages Discovery.  
+- Wrapper chaque appel dans un try/catch avec log séparé canal “gateway”.
+
+Étape 10 – Gestion des frais et devises  
+- Seeder qui insère XOF, EUR, USD avec décimales 0, 2, 2.  
+- Seeder fees avec tranches 0-50 000 XOF → 1.5 % + 100 XOF, 50 001-500 000 → 1.2 % + 200 XOF, > 500 000 → 1 %.  
+- Commande artisan fees:update pour super-admin.  
+- Tests : vérification que fees inclus dans response JSON.
+
+Étape 11 – Webhooks & signature  
+- Middleware VerifyWebhookSignature qui lit le header X-Fdp-Signature et compare HMAC.  
+- Commande artisan webhooks:test pour envoyer un événement dummy.  
+- Documentation générée via scribe ou scalar à partir des annotations des contrôleurs.
+
+Étape 12 – Interface Jetstream / Vue 3  
+- Pages Inertia : Dashboard, Transactions, Customers, Refunds, Payouts, Webhooks, Settings.  
+- Composables useTransactionFilters, usePagination, useToast.  
+- Composant CheckoutForm.vue réutilisable (iframe ou redirect selon type).  
+- Build production : npm run build optimisé avec vite-bundle-analyzer.
+
+Étape 13 – Tests bout-en-bout  
+- Utiliser Laravel Dusk pour scénario complet : inscription marchand → générer clé sandbox → créer transaction → payer avec mock → vérifier webhook reçu.  
+- Intégration ngrok pour recevoir webhooks locaux ; stocker le dernier payload dans tests/storage/webhook.json pour assertions.
+
+Étape 14 – CI/CD pipeline  
+- GitHub Actions workflow tests.yml : composer install, npm ci, php artisan test, npm run build, migration sur base test.  
+- Workflow deploy-staging.yml : ssh, pull develop, migrate sandbox, restart horizon.  
+- Workflow deploy-prod.yml : backup base, tag semver, migrate live, flush cache, restart services, notify Slack.
+
+Étape 15 – Sécurité avant prod  
+- php artisan config:cache, route:cache, view:cache.  
+- php artisan optimize.  
+- Activation du firewall ufw (22, 80, 443 uniquement).  
+- Installation de fail2ban sur nginx logs.  
+- Scan OWASP ZAP sur les endpoints critiques ; corriger avant GO.
+
+Étape 16 – Déploiement progressif  
+- Mise en place d’un feature-flag “new_checkout” géré par table flags ; permet rollback instantané sans redeploy.  
+- Surveillance 24 h : taux d’erreur < 1 %, temps de réponse p95 < 800 ms.  
+- Si anomalie, rollback via symlink précédent et restore base en 3 min.
+
+Étape 17 – Documentation finale & livraison  
+- Génération de la collection Postman via commande artisan postman:export.  
+- Export PDF du changelog et du runbook.  
+- Tag git v1.0.0, release note automatisée via GitHub Release.  
+- Clôture du sprint, rétrospective, ouverture du board pour v1.1.

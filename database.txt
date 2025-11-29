@@ -1,0 +1,160 @@
+Ci-dessous le **schéma visuel complet** (notation « ascendance » : chaque ligne indique la table enfant, ses colonnes clés, puis la ou les tables parentes reliées par FK).  
+Aucun tableau, juste des listes à puces pour copier-coller facilement.
+
+- merchants  
+  – id (PK, uuid)  
+  – user_id (FK → users.id)  
+  – name  
+  – registration_number  
+  – tax_id  
+  – address  
+  – country  
+  – status enum(pending|verified|rejected)  
+  – activated_at timestamp nullable  
+  – created_at / updated_at  
+  – index unique(user_id, name)
+
+- api_keys  
+  – id (PK)  
+  – merchant_id (FK → merchants.id, cascade on delete)  
+  – name  
+  – key_hash (bcrypt)  
+  – scope enum(sandbox|live)  
+  – last_used_at timestamp nullable  
+  – created_at / updated_at  
+  – index(merchant_id, scope)
+
+- customers  
+  – id (PK)  
+  – merchant_id (FK → merchants.id, cascade on delete)  
+  – email  
+  – name  
+  – phone  
+  – created_at / updated_at  
+  – index(merchant_id, email)
+
+- bank_accounts  
+  – id (PK)  
+  – merchant_id (FK → merchants.id, cascade on delete)  
+  – holder_name  
+  – type enum(bank|mobile_money)  
+  – iban_or_number (encrypted)  
+  – swift_or_operator (encrypted)  
+  – country  
+  – status enum(unverified|verified|invalid)  
+  – verified_at timestamp nullable  
+  – created_at / updated_at
+
+- transactions  
+  – id (PK, uuid)  
+  – merchant_id (FK → merchants.id, cascade on delete)  
+  – customer_id (FK → customers.id, set null on delete)  
+  – amount (integer, centimes)  
+  – currency (char 3)  
+  – fees (integer, centimes)  
+  – net_amount (integer, centimes)  
+  – status enum(pending|successful|failed|refunded|partially_refunded|manual_review)  
+  – description text  
+  – return_url text  
+  – cancel_url text  
+  – paid_at timestamp nullable  
+  – refunded_at timestamp nullable  
+  – created_at / updated_at  
+  – index(merchant_id, status)  
+  – index(uuid unique)
+
+- refunds  
+  – id (PK)  
+  – merchant_id (FK → merchants.id, cascade on delete)  
+  – transaction_id (FK → transactions.id, cascade on delete)  
+  – amount (integer, centimes)  
+  – currency (char 3)  
+  – reason text  
+  – status enum(pending|processed|failed)  
+  – processed_at timestamp nullable  
+  – created_at / updated_at
+
+- payouts  
+  – id (PK)  
+  – merchant_id (FK → merchants.id, cascade on delete)  
+  – bank_account_id (FK → bank_accounts.id, restrict on delete)  
+  – amount (integer, centimes)  
+  – currency (char 3)  
+  – status enum(pending|processed|failed)  
+  – processed_at timestamp nullable  
+  – created_at / updated_at
+
+- webhook_endpoints  
+  – id (PK)  
+  – merchant_id (FK → merchants.id, cascade on delete)  
+  – url text  
+  – secret (varchar 64)  
+  – events (json array)  
+  – active boolean default true  
+  – created_at / updated_at
+
+- webhook_events  
+  – id (PK)  
+  – webhook_endpoint_id (FK → webhook_endpoints.id, cascade on delete)  
+  – merchant_id (FK → merchants.id, cascade on delete)  
+  – transaction_id (FK → transactions.id, set null on delete)  
+  – event varchar(40)  
+  – payload json  
+  – sent_at timestamp nullable  
+  – response_status smallint nullable  
+  – attempts tinyint default 0  
+  – created_at / updated_at
+
+- fees  
+  – id (PK)  
+  – merchant_id (FK → merchants.id, cascade on delete)  
+  – currency (char 3)  
+  – min_amount (integer)  
+  – max_amount (integer)  
+  – percent (decimal 5,2)  
+  – fixed (integer, centimes)  
+  – scope enum(sandbox|live)  
+  – created_at / updated_at
+
+- currency_limits  
+  – id (PK)  
+  – currency (char 3)  
+  – max_amount (integer)  
+  – daily_count integer  
+  – daily_sum integer  
+  – scope enum(sandbox|live)  
+  – created_at / updated_at
+
+- audit_logs  
+  – id (PK)  
+  – user_type varchar(20) (User, Admin, etc.)  
+  – user_id bigint nullable  
+  – merchant_id bigint nullable  
+  – event varchar(50)  
+  – auditable_type varchar(100)  
+  – auditable_id bigint  
+  – old_values json nullable  
+  – new_values json nullable  
+  – ip varchar(45)  
+  – user_agent text  
+  – created_at timestamp
+
+- users (table Laravel native)  
+  – id, name, email, email_verified_at, password, remember_token, created_at, updated_at
+
+- currencies  
+  – id (PK)  
+  – code (char 3 unique)  
+  – name varchar(40)  
+  – decimals tinyint  
+  – symbol varchar(4)  
+  – created_at / updated_at
+
+Contraintes d’intégrité visuelles  
+- merchants ← one-to-many → api_keys, customers, bank_accounts, transactions, refunds, payouts, webhook_endpoints, webhook_events, fees  
+- transactions ← one-to-many → refunds  
+- transactions ← one-to-many → webhook_events  
+- customers ← one-to-many → transactions  
+- bank_accounts ← one-to-many → payouts  
+- users ← one-to-many → merchants
+

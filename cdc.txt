@@ -1,0 +1,322 @@
+### 1. Objectif du projet
+
+1. Offrir une plateforme de paiement en ligne entièrement maison, sans dépendance à un prestataire tiers.  
+2. Permettre à tout marchand de créer un compte, d’obtenir des clés API et d’intégrer des paiements en quelques minutes.  
+3. Gérer l’ensemble du flux : création de transaction, paiement client, notification de succès ou d’échec, remboursement et versement des fonds.  
+4. Fournir deux environnements distincts :  
+   - sandbox pour les tests,  
+   - production pour les transactions réelles.  
+5. Exposer une API REST documentée, stable et sécurisée, calquée sur les conventions de FedaPay.  
+6. Centraliser, pour le marchand, la vision de ses ventes, ses clients, ses webhooks et son solde via un dashboard Jetstream / Vue 3.
+
+
+### 2. Architecture technique
+
+1. Backend : Laravel 12 en mode API RESTful, sans blade, uniquement JSON.  
+2. Frontend : Jetstream avec stack Vue 3 + Inertia, pages administrées côté client.  
+3. Base de données : MySQL 8, schéma normalisé, migrations versionnées.  
+4. Authentification : Laravel Sanctum, tokens personnels par marchand, scopes sandbox|live.  
+5. Structure des dossiers :  
+   - app/Http/Controllers/Api/V1 pour les contrôleurs API.  
+   - app/Models pour Eloquent, avec relations prêtes.  
+   - app/Services pour la logique métier (paiement, balance, webhooks).  
+6. Deux environnements Laravel distincts :  
+   - .env.sandbox – base sandbox, clés de test, queue séparée.  
+   - .env.production – base live, clés fortes, cache redis.  
+7. Queue : Redis pour les jobs de webhook et les payouts asynchrones.  
+8. Logs : canal daily + canal custom “transactions” pour audit.  
+9. Tests : PHPUnit + Pest, coverage exigé > 80 % sur les modules critiques.
+
+
+### 3. Utilisateurs et rôles
+
+1. Super-administrateur  
+   - Accès complet à tous les comptes, transactions et paramètres système.  
+   - Peut bloquer/débloquer un marchand, forcer un remboursement, gérer les taux de commission.  
+
+2. Marchand  
+   - Création de compte via inscription classique ou API.  
+   - Génération de paires de clés API (sandbox + live).  
+   - Droits : créer des transactions, consulter ses clients, lancer des remboursements, paramétrer ses webhooks.  
+
+3. Client (payeur)  
+   - Sans compte obligatoire ; identifié par email / téléphone lors du paiement.  
+   - Ne voit qu’une page de checkout sécurisée générée à la volée.  
+
+4. Utilisateur API (optionnel)  
+   - Token Sanctum dédié à un serveur tiers (ex. SaaS du marchand).  
+   - Scope restreint via middleware “api.restricted”.
+
+
+### 4. Fonctionnalités principales
+
+1. Création de compte marchand avec vérification email et choix devise par défaut.  
+2. Génération automatique de deux paires de clés API : sandbox et live, révoquables à tout moment.  
+3. Endpoint POST /transactions pour créer un paiement : montant, devise, description, callback urls, méta-données libres.  
+4. Page de checkout unique générée via token temporaire ; acceptation carte et mobile money si activé.  
+5. Webhooks configurables : url, secret, événements sélectionnés (payment.success, payment.failed, refund.done).  
+6. Remboursement partiel ou total via POST /transactions/{id}/refund avec motif obligatoire.  
+7. Historique paginé et filtrable pour transactions, remboursements, échecs et webhooks reçus.  
+8. Solde en temps réel : disponible, en cours de déblocage, total versé.  
+9. Payout automatique ou manuel vers compte bancaire/mobile du marchand via POST /payouts.  
+10. Dashboard stats : revenus du jour, taux de conversion, top 5 des paiements, graphique 30 jours.
+
+
+### 5. Structure de l’API (inspirée de FedaPay)
+
+1. Routes préfixées par /api/v1 et protégées par Sanctum.  
+2. Headers obligatoires : Authorization Bearer <token> et Fdp-Version: 2025-11-28.  
+3. Réponses uniformes : { success: bool, data: object|array, message: string, errors: object|null }.  
+4. Codes HTTP standards : 200, 201, 204, 400, 401, 404, 422, 429, 500.  
+5. Endpoints principaux :  
+   - GET /customers – lister les clients du marchand.  
+   - POST /customers – créer un client (email, name, phone).  
+   - GET /customers/{id} – détail d’un client avec ses transactions.  
+   - POST /transactions – créer un intent de paiement (customer_id, amount, currency, description, return_url, cancel_url).  
+   - GET /transactions – lister avec filtres status, from, to, per_page.  
+   - GET /transactions/{id} – détail complet, fees incluses.  
+   - POST /transactions/{id}/pay – déclencher le paiement (payment_method, provider_payload).  
+   - POST /transactions/{id}/refund – rembourser (amount optionnel pour partiel).  
+   - GET /balance – solde disponible et pending par devise.  
+   - POST /payouts – demander un versement (amount, currency, recipient_account).  
+   - GET /payouts – historique des versements.  
+   - POST /webhook-endpoints – enregistrer une url de réception.  
+   - GET /webhook-endpoints – lister les endpoints.  
+   - DELETE /webhook-endpoints/{id} – supprimer.  
+   - POST /webhook-events/{id}/resend – renvoyer un webhook manqué.
+
+
+### 6. Modèles de données (ceci n'est pas forcement bien terminé mais l'idée y ait)
+
+1. User  
+   - id, name, email, email_verified_at, password, created_at, updated_at  
+
+2. Merchant  
+   - id, user_id, name, registration_number, tax_id, address, country, status enum(pending|verified|rejected), activated_at, created_at, updated_at  
+   - index unique(user_id, name)  
+
+3. Customer  
+   - id, merchant_id, email, name, phone, created_at, updated_at  
+
+4. Transaction  
+   - id, merchant_id, customer_id, uuid, amount, currency, fees, net_amount, status enum(pending|successful|failed|refunded|partially_refunded|manual_review), description, return_url, cancel_url, paid_at, refunded_at, created_at, updated_at  
+
+5. Refund  
+   - id, merchant_id, transaction_id, amount, currency, reason, status enum(pending|processed|failed), processed_at, created_at, updated_at  
+
+6. Payout  
+   - id, merchant_id, bank_account_id, amount, currency, status enum(pending|processed|failed), processed_at, created_at, updated_at  
+
+7. BankAccount  
+   - id, merchant_id, holder_name, type enum(bank|mobile_money), iban_or_number, swift_or_operator, country, status enum(unverified|verified|invalid), verified_at, created_at, updated_at  
+
+8. ApiKey  
+   - id, merchant_id, name, key_hash, scope enum(sandbox|live), last_used_at, created_at, updated_at  
+
+9. WebhookEndpoint  
+   - id, merchant_id, url, secret, events (json), active, created_at, updated_at  
+
+10. WebhookEvent  
+    - id, webhook_endpoint_id, merchant_id, transaction_id, event, payload (json), sent_at, response_status, attempts, created_at, updated_at  
+
+11. Currency  
+    - id, code, name, decimals, symbol, created_at, updated_at  
+
+12. Fee  
+    - id, merchant_id, currency, min_amount, max_amount, percent, fixed, scope enum(sandbox|live), created_at, updated_at  
+
+13. CurrencyLimit  
+    - id, currency, max_amount, daily_count, daily_sum, scope enum(sandbox|live), created_at, updated_at  
+
+14. AuditLog  
+    - id, user_type, user_id, merchant_id, event, auditable_type, auditable_id, old_values (json), new_values (json), ip, user_agent, created_at  
+
+Toutes les clés étrangères merchant_id sont indexées ; on cascade delete sur les objets enfants uniquement si le marchand le demande (soft-delete optionnel).
+
+
+
+
+### 7. Sécurité
+
+1. Authentification exclusive par Sanctum : token personnel envoyé en Bearer.  
+2. Clés API hashées avec bcrypt avant stockage ; seul le préfixe est affiché une fois.  
+3. Middleware “own.resource” : un marchand ne peut lire que ses propres données.  
+4. Validation stricte des montants : max par transaction configurable par devise, rejets hors limites.  
+5. Rate-limiting global 60 req/min par token, 10 req/min sur /transactions/{id}/pay pour anti-spam.  
+6. HTTPS obligatoire ; middleware ForceSchema redirige tout trafic http vers https.  
+7. Protection CSRF désactivée sur les routes api/*, mais vérification du secret webhook pour chaque appel (signature HMAC-SHA256).  
+8. Champs sensibles (numéro de carte, OTP) jamais stockés ; token de provider échangé en memoire puis oublié.  
+9. Logs d’audit écrits dans la table audit_logs (user_id, action, old_values, new_values, ip, user_agent).  
+10. Sauvegardes automatiques quotidiennes chiffrées (base + uploads) et retention 30 jours.
+
+
+
+### 8. Interface marchand (Jetstream + Vue 3)
+
+1. Layout responsive Tailwind CSS, sombre/clair switchable.  
+2. Dashboard accueil : cartes solde disponible, revenu du jour, taux échec, graphique ligne 30 jours.  
+3. Page “Transactions” : table paginée avec filtres date, statut, devise, recherche rapide, export CSV.  
+4. Page “Nouveau paiement” : formulaire création transaction + bouton “Générer lien de paiement” copiable.  
+5. Page “Clients” : liste, vue détail, bouton “Créer client” modal simple.  
+6. Page “Remboursements” : table des refunds, motif, montant, statut, bouton rapide “Rembourser” depuis ligne transaction.  
+7. Page “Webhooks” : liste des endpoints, switch actif/inactif, champ secret, bouton “Tester” qui envoie un event dummy.  
+8. Page “Payouts” : solde minimal configurable, demande de versement, historique des virements.  
+9. Page “Paramètres” : profil entreprise, changement devise par défaut, révocation clés API, logs connexions.  
+10. Notifications toast Inertia : succès, erreur, webhook reçu, payout traité.
+
+
+
+
+### 9. Documentation API
+
+1. Rédaction en Markdown stockée dans /docs/api, servie publiquement via route /docs.  
+2. Une page par ressource : description, endpoint complet, verbe HTTP, headers, corps de requête, exemples curl.  
+3. Schémas JSON de réponse visibles via accordion, pas de tableau.  
+4. Codes d’erreur listés : 400 bad_request, 401 unauthorized, 404 not_found, 422 validation_failed, 429 too_many_requests, 500 internal_error.  
+5. Collection Postman générée automatiquement après chaque déploiement via commande artisan api:export.  
+6. Changelog versionné (fichier docs/changelog.md) indiquant routes ajoutées, modifiées ou supprimées.  
+7. Page “Quick start” : obtenir clé sandbox, créer transaction, payer, recevoir webhook en local via ngrok.  
+8. Guide sécurité : comment valider signature webhook, rotation de clés, bonnes pratiques token.  
+9. Support langue : anglais par défaut, français optionnel via ?lang=fr.  
+10. Feedback intégré : bouton “Cette page est-elle claire ?” qui enregistre réponse anonyme dans table docs_feedback.
+
+
+
+### 10. Déploiement et environnements
+
+1. Deux applications Laravel distinctes : sandbox.pay.local et api.pay.local ; chacune possède son .env propre.  
+2. Base de données séparée : pay_sandbox et pay_live ; aucun accès croisé.  
+3. CI/CD via GitHub Actions : push sur main déclenche tests, build assets, migration sandbox, déploiement sur serveur staging.  
+4. Tag git v* déclenche déploiement production : backup base, migration live, flush cache, restart queue.  
+5. Variables sensibles stockées dans GitHub Secrets ; aucun secret en clair dans le repo.  
+6. Supervisor gère quatre workers queue par environnement : default, webhooks, payouts, emails.  
+7. Horizons dashboard actif pour monitoring des jobs échoués ; alerte Slack si > 5 échecs consécutifs.  
+8. Certificats SSL wildcard Let’s Encrypt renouvelés automatiquement via cron.  
+9. Politique de retention : logs applicatifs 7 jours, jobs échoués 14 jours, sauvegardes base 30 jours.  
+10. Rollback instantané : symlink release, artisan migrate:rollback ciblé et restore base last-backup en moins de 3 min.
+
+
+### 11. Cycle de vie d’une transaction (vue d’ensemble)
+
+1. Marchand envoie POST /transactions → obtient uuid et status “pending”.  
+2. Marchand ou client appelle POST /transactions/{uuid}/pay avec payment_method.  
+3. Système appelle le provider (carte ou mobile-money) en mode sandbox ou live.  
+4. Provider retourne succès ou échec ; système met à jour status et paid_at.  
+5. Webhook “payment.success” ou “payment.failed” est mis en queue et dispatché vers toutes les urls actives du marchand.  
+6. Montant - fees est crédité au solde “available” du marchand si succès.  
+7. Marchand peut consulter l’historique ou demander un payout ; le payout crée un job asynchrone.  
+8. Une fois le payout traité, webhook “payout.done” est envoyé et le solde est débité.
+
+
+
+### 12. Gestion des devises et frais
+
+1. Devise principale configurée dans .env (ex : XOF) ; toutes les transactions passent en centimes pour éviter les virgules.  
+2. Table currencies listant code, nom, décimales, symbole ; taux de change fixes ou via API tierce si multi-devises activé.  
+3. Structure des frais stockée dans table fees : merchant_id, min_amount, max_amount, percent, fixed, currency, live|sandbox.  
+4. Middleware “apply.fees” calcule automatiquement fees à la volée lors du POST /transactions et les renvoie dans la réponse.  
+5. Fees jamais modifiées après création ; si remboursement, frais initiaux conservés, nouveau frais de remboursement appliqué si configuré.  
+6. Export comptable : montant brut, fees, net_amount, devise, taux appliqué, tout loggué dans transaction pour audit.
+
+
+### 13. Webhooks et événements
+
+1. Événements émis : payment.success, payment.failed, payment.canceled, refund.done, payout.done.  
+2. Payload signé avec HMAC-SHA256 via secret stocké dans webhook_endpoints ; header X-Fdp-Signature fourni.  
+3. Job SendWebhookJob : 3 tentatives exponentielles (1 s, 10 s, 100 s) avant marquage “failed”.  
+4. Réponse 2xx considérée comme acquittée ; toute autre relance la file.  
+5. Endpoint POST /webhook-events/{id}/resend permet de forcer un nouvel envoi manuel.  
+6. Logs détaillés dans webhook_events : response_status, duration, attempts, last_error.  
+7. Test rapide via bouton “Envoyer un événement test” qui déclenche un payload dummy immédiat.
+
+
+### 14. Monitoring et alertes
+
+1. Horizon affiche en temps réel le nombre de jobs en attente, échoués, terminés ; seuil critique : 50 jobs en retries → notification Slack.  
+2. Package spatie/laravel-health vérifie quotidiennement : dernière backup, espace disque > 20 %, queue backlog < 100, certificat SSL > 7 jours.  
+3. Taux d’échec des transactions sur les 24 h : si > 5 %, email à l’équipe technique et badge rouge sur le dashboard admin.  
+4. Endpoint GET /health renvoie {status: ok|fail, checks: [...]} ; utilisé par Load Balancer pour retirer une instance défaillante.  
+5. Logs d’erreur centralisés via monolog/graylog ou simple fichier daily gzip ; retention 14 jours.
+
+
+### 15. Gestion des clés API et scopes
+
+1. Génération aléatoire de 64 caractères préfixés par fdp_live_ ou fdp_test_ ; stockage hashé bcrypt côté base.  
+2. Scopes disponibles : read, write, refund, payout ; assignés lors de la création, modifiables via PATCH /api-keys/{id}.  
+3. Middleware scope.check bloque l’accès si scope manquant ; réponse 403 forbidden avec détail du scope requis.  
+4. Rotation simple : créer nouvelle clé, mettre à jour intégration, révoquer ancienne en un clic ; historique des clés révoquées conservé pour audit.  
+5. Limite de clés actives par marchand : 5 sandbox et 5 live ; message clair si tentative de dépassement.
+
+
+### 16. Gestion des comptes bancaires et payouts
+
+1. Un marchand peut enregistrer plusieurs comptes via POST /bank-accounts (iban, swift ou numero mobile-money, holder_name).  
+2. Vérification micro-dépôt bancaire facultative : deux petits montants crédités puis saisis par le marchand pour valider le compte.  
+3. Payout minimum configurable dans .env (ex : 5 000 XOF) ; middleware refuse la demande en dessous du seuil.  
+4. Job ProcessPayoutJob : débite le solde “available”, crée un payout en “pending”, appelle le provider bancaire ou mobile-money, met à jour le statut final.  
+5. Échec de payout : solde recrédité automatiquement, webhook “payout.failed” envoyé avec reason.
+
+
+
+### 17. Anti-fraude et limits
+
+1. Velocity check : max 10 transactions par carte ou numéro mobile-money par heure ; blocage temporaire et review manuel.  
+2. Montant max par transaction défini par devise dans table risk_limits ; modifiable uniquement par super-admin.  
+3. Liste noire interne : email, phone, ip, card_bin ; avant chaque /pay, job CheckBlacklistJob bloque si match.  
+4. Score de risque simple : ip != pays de la carte, 3ds absent, montant > 2 écarts-types → statut “manual_review” au lieu de “successful”.  
+5. Notification instantanée au super-admin si review requis ; dashboard admin possède file d’attente “Transactions à examiner” avec bouton approuver/refuser.
+
+
+
+### 18. Sauvegarde et reprise après sinistre
+
+1. Sauvegarde incrémentielle quotidienne 02h00 du dossier storage/app/uploads via restic vers repo S3-like.  
+2. Dump complet MySQL via mysqldump gzip chaque nuit, conservé 30 jours, test de restore hebdomadaire sur base temporaire.  
+3. Documentation interne “runbook” : étapes de restore serveur complet en < 30 min (install deps, import base, restore uploads, restart queue).  
+4. Environnement “cold-standby” pré-provisionné chez second fournisseur ; base restaurée quotidiennement ; switch DNS en < 5 min.  
+5. Test de reprise trimestriel validé par équipe et archivé sous forme de rapport PDF dans repo docs/disaster-recovery.
+
+
+
+### 19. Conformité et traçabilité
+
+1. Conservation des logs de transactions et webhooks pendant 5 ans en archive signée (SHA-256 + horodatage).  
+2. Export CSV ou JSON sur demande du marchand ou autorité, filtrable par période et UUID.  
+3. Chiffrement au repos des sauvegardes via AES-256 avec clés stockées dans HSM cloud ou vault local.  
+4. Procédure KYC light intégrée : nom, adresse, numéro d’identité, selfie ; statut (pending/verified/rejected) obligatoire avant payouts > 500 000 XOF.  
+5. Audit tiers planifié chaque année ; rapport de conformité (PCIDSS-like locale) remis au conseil et disponible sur simple demande écrite.  
+
+
+
+
+
+
+### Annexe B – Statuts possibles des objets principaux
+
+1. Transaction  
+   - pending : intent créé, attente du paiement  
+   - successful : fonds capturés  
+   - failed : échec définitif  
+   - refunded : totalement remboursée  
+   - partially_refunded : partie remboursée  
+   - manual_review : bloquée par anti-fraude, attente décision admin  
+
+2. Refund  
+   - pending : demande enregistrée  
+   - processed : fonds retournés au client  
+   - failed : le provider a rejeté le remboursement  
+
+3. Payout  
+   - pending : demande en file d’attente  
+   - processed : virement exécuté  
+   - failed : rejet banque ou mobile-money  
+
+4. WebhookEvent  
+   - pending : pas encore envoyé  
+   - sent : http 2xx reçu  
+   - failed : 3 tentatives épuisées  
+
+5. BankAccount / MobileAccount  
+   - unverified : créé, pas encore validé  
+   - verified : micro-dépôts ou code reçus et saisis  
+   - invalid : données rejetées par le réseau bancaire ou opérateur
