@@ -1,11 +1,8 @@
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
-import AuthenticationCard from '@/Components/AuthenticationCard.vue';
-import AuthenticationCardLogo from '@/Components/AuthenticationCardLogo.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
+import AuthCard from '@/Components/Auth/AuthCard.vue';
+import AuthInput from '@/Components/Auth/AuthInput.vue';
+import AuthButton from '@/Components/Auth/AuthButton.vue';
 
 const props = defineProps({
     email: String,
@@ -27,59 +24,60 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Reset Password" />
+    <Head :title="$t('auth.reset_password.title')" />
 
-    <AuthenticationCard>
-        <template #logo>
-            <AuthenticationCardLogo />
-        </template>
+    <div class="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-4">
+        <div class="relative w-full max-w-4xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 shadow-2xl rounded-lg overflow-hidden">
+                <!-- Left Visual Column -->
+                <div class="hidden md:flex flex-col justify-center items-center bg-primary-600 text-white p-12">
+                    <img src="https://placehold.co/300x100/ffffff/6366f1?text=Hospitality" alt="Logo" class="mb-8 w-48">
+                    <h1 class="text-3xl font-bold mb-4 text-center">{{ $t('auth.reset_password.slogan') }}</h1>
+                    <p class="text-primary-200 text-center">{{ $t('auth.reset_password.description') }}</p>
+                </div>
 
-        <form @submit.prevent="submit">
-            <div>
-                <InputLabel for="email" value="Email" />
-                <TextInput
-                    id="email"
-                    v-model="form.email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    required
-                    autofocus
-                    autocomplete="username"
-                />
-                <InputError class="mt-2" :message="form.errors.email" />
+                <!-- Right Form Column -->
+                <div class="flex flex-col justify-center p-8 bg-white dark:bg-gray-800">
+                    <AuthCard>
+                        <div class="w-full">
+                            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-gray-200">{{ $t('auth.reset_password.heading') }}</h2>
+                            <form @submit.prevent="submit">
+                                <div class="space-y-5">
+                                    <AuthInput
+                                        :label="$t('auth.reset_password.email_label')"
+                                        type="email"
+                                        v-model="form.email"
+                                        :error="form.errors.email"
+                                        required
+                                        autofocus
+                                    />
+                                    <AuthInput
+                                        :label="$t('auth.reset_password.password_label')"
+                                        type="password"
+                                        v-model="form.password"
+                                        :error="form.errors.password"
+                                        required
+                                    />
+                                    <AuthInput
+                                        :label="$t('auth.reset_password.password_confirmation_label')"
+                                        type="password"
+                                        v-model="form.password_confirmation"
+                                        :error="form.errors.password_confirmation"
+                                        required
+                                    />
+                                </div>
+
+                                <div class="mt-8">
+                                    <AuthButton :disabled="form.processing">
+                                        <span v-if="form.processing" class="animate-spin h-5 w-5 mr-3 border-t-2 border-b-2 border-primary-50 rounded-full"></span>
+                                        {{ $t('auth.reset_password.reset_button') }}
+                                    </AuthButton>
+                                </div>
+                            </form>
+                        </div>
+                    </AuthCard>
+                </div>
             </div>
-
-            <div class="mt-4">
-                <InputLabel for="password" value="Password" />
-                <TextInput
-                    id="password"
-                    v-model="form.password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    required
-                    autocomplete="new-password"
-                />
-                <InputError class="mt-2" :message="form.errors.password" />
-            </div>
-
-            <div class="mt-4">
-                <InputLabel for="password_confirmation" value="Confirm Password" />
-                <TextInput
-                    id="password_confirmation"
-                    v-model="form.password_confirmation"
-                    type="password"
-                    class="mt-1 block w-full"
-                    required
-                    autocomplete="new-password"
-                />
-                <InputError class="mt-2" :message="form.errors.password_confirmation" />
-            </div>
-
-            <div class="flex items-center justify-end mt-4">
-                <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                    Reset Password
-                </PrimaryButton>
-            </div>
-        </form>
-    </AuthenticationCard>
+        </div>
+    </div>
 </template>

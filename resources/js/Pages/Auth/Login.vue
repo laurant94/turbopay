@@ -1,17 +1,8 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import AuthenticationCard from '@/Components/AuthenticationCard.vue';
-import AuthenticationCardLogo from '@/Components/AuthenticationCardLogo.vue';
-import Checkbox from '@/Components/Checkbox.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-
-defineProps({
-    canResetPassword: Boolean,
-    status: String,
-});
+import AuthCard from '@/Components/Auth/AuthCard.vue';
+import AuthInput from '@/Components/Auth/AuthInput.vue';
+import AuthButton from '@/Components/Auth/AuthButton.vue';
 
 const form = useForm({
     email: '',
@@ -20,71 +11,77 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.transform(data => ({
-        ...data,
-        remember: form.remember ? 'on' : '',
-    })).post(route('login'), {
+    form.post(route('login'), {
         onFinish: () => form.reset('password'),
     });
 };
 </script>
 
 <template>
-    <Head title="Log in" />
+    <Head :title="$t('auth.login.title')" />
 
-    <AuthenticationCard>
-        <template #logo>
-            <AuthenticationCardLogo />
-        </template>
+    <div class="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-4">
+        <div class="relative w-full max-w-4xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 shadow-2xl rounded-lg overflow-hidden">
+                <!-- Left Visual Column -->
+                <div class="hidden md:flex flex-col justify-center items-center bg-primary-600 text-white p-12">
+                    <img src="https://placehold.co/300x100/ffffff/6366f1?text=Dji-Pay" alt="Logo" class="mb-8 w-48">
+                    <h1 class="text-3xl font-bold mb-4 text-center">{{ $t('auth.login.management_slogan') }}</h1>
+                    <p class="text-primary-200 text-center">{{ $t('auth.login.management_description') }}</p>
+                </div>
 
-        <div v-if="status" class="mb-4 font-medium text-sm text-green-600">
-            {{ status }}
+                <!-- Right Form Column -->
+                <div class="flex flex-col justify-center p-8 bg-white dark:bg-gray-800">
+                    <AuthCard>
+                        <div class="w-full">
+                            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-gray-200">{{ $t('auth.login.login_heading') }}</h2>
+                            <form @submit.prevent="submit">
+                                <div class="space-y-5">
+                                    <AuthInput
+                                        :label="$t('auth.login.email_label')"
+                                        type="email"
+                                        v-model="form.email"
+                                        :error="form.errors.email"
+                                        required
+                                    />
+                                    <AuthInput
+                                        :label="$t('auth.login.password_label')"
+                                        type="password"
+                                        v-model="form.password"
+                                        :error="form.errors.password"
+                                        required
+                                    />
+                                </div>
+
+                                <div class="flex items-center justify-between mt-6">
+                                    <label class="flex items-center text-sm">
+                                        <input type="checkbox" v-model="form.remember" class="rounded border-gray-300 dark:border-gray-600 text-primary-600 shadow-sm focus:ring-primary-500 bg-white dark:bg-gray-700"/>
+                                        <span class="ml-2 text-gray-600 dark:text-gray-400">{{ $t('auth.login.remember_me') }}</span>
+                                    </label>
+                                    <Link :href="route('password.request')" class="text-sm font-medium text-primary-600 hover:text-primary-500">
+                                        {{ $t('auth.login.forgot_password') }}
+                                    </Link>
+                                </div>
+
+                                <div class="mt-8">
+                                    <AuthButton :disabled="form.processing">
+                                        <span v-if="form.processing" class="animate-spin h-5 w-5 mr-3 border-t-2 border-b-2 border-primary-50 rounded-full"></span>
+                                        {{ $t('auth.login.login_button') }}
+                                    </AuthButton>
+                                </div>
+                            </form>
+                            <div class="mt-6 text-center">
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    {{ $t('auth.login.no_account_yet') }}
+                                    <Link :href="route('register')" class="font-medium text-primary-600 hover:text-primary-500">
+                                        {{ $t('auth.login.register_link') }}
+                                    </Link>
+                                </p>
+                            </div>
+                        </div>
+                    </AuthCard>
+                </div>
+            </div>
         </div>
-
-        <form @submit.prevent="submit">
-            <div>
-                <InputLabel for="email" value="Email" />
-                <TextInput
-                    id="email"
-                    v-model="form.email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    required
-                    autofocus
-                    autocomplete="username"
-                />
-                <InputError class="mt-2" :message="form.errors.email" />
-            </div>
-
-            <div class="mt-4">
-                <InputLabel for="password" value="Password" />
-                <TextInput
-                    id="password"
-                    v-model="form.password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    required
-                    autocomplete="current-password"
-                />
-                <InputError class="mt-2" :message="form.errors.password" />
-            </div>
-
-            <div class="block mt-4">
-                <label class="flex items-center">
-                    <Checkbox v-model:checked="form.remember" name="remember" />
-                    <span class="ms-2 text-sm text-gray-600">Remember me</span>
-                </label>
-            </div>
-
-            <div class="flex items-center justify-end mt-4">
-                <Link v-if="canResetPassword" :href="route('password.request')" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Forgot your password?
-                </Link>
-
-                <PrimaryButton class="ms-4" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                    Log in
-                </PrimaryButton>
-            </div>
-        </form>
-    </AuthenticationCard>
+    </div>
 </template>

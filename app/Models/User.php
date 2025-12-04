@@ -66,4 +66,34 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * @return HasMany
+     */
+    public function merchants(): HasMany
+    {
+        return $this->hasMany(Merchant::class);
+    }
+
+    /**
+     * @return Merchant|null
+     */
+    public function activeMerchant(): ?Merchant
+    {
+        if ($this->merchants()->count() === 0) {
+            return null;
+        }
+
+        return $this->merchants()->find(session('active_merchant_id')) ?? $this->merchants()->first();
+    }
+
+    /**
+     * @param Merchant $merchant
+     * @return void
+     */
+    public function switchMerchant(Merchant $merchant): void
+    {
+        if ($this->merchants()->where('id', $merchant->id)->exists()) {
+            session(['active_merchant_id' => $merchant->id]);
+        }
+    }
 }

@@ -1,12 +1,9 @@
 <script setup>
-import { nextTick, ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import AuthenticationCard from '@/Components/AuthenticationCard.vue';
-import AuthenticationCardLogo from '@/Components/AuthenticationCardLogo.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
+import AuthCard from '@/Components/Auth/AuthCard.vue';
+import AuthInput from '@/Components/Auth/AuthInput.vue';
+import AuthButton from '@/Components/Auth/AuthButton.vue';
 
 const recovery = ref(false);
 
@@ -15,21 +12,9 @@ const form = useForm({
     recovery_code: '',
 });
 
-const recoveryCodeInput = ref(null);
-const codeInput = ref(null);
-
-const toggleRecovery = async () => {
-    recovery.value ^= true;
-
-    await nextTick();
-
-    if (recovery.value) {
-        recoveryCodeInput.value.focus();
-        form.code = '';
-    } else {
-        codeInput.value.focus();
-        form.recovery_code = '';
-    }
+const toggleRecovery = () => {
+    recovery.value = !recovery.value;
+    form.reset();
 };
 
 const submit = () => {
@@ -38,67 +23,59 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Two-factor Confirmation" />
+    <Head :title="$t('auth.two_factor_challenge.title')" />
 
-    <AuthenticationCard>
-        <template #logo>
-            <AuthenticationCardLogo />
-        </template>
-
-        <div class="mb-4 text-sm text-gray-600">
-            <template v-if="! recovery">
-                Please confirm access to your account by entering the authentication code provided by your authenticator application.
-            </template>
-
-            <template v-else>
-                Please confirm access to your account by entering one of your emergency recovery codes.
-            </template>
-        </div>
-
-        <form @submit.prevent="submit">
-            <div v-if="! recovery">
-                <InputLabel for="code" value="Code" />
-                <TextInput
-                    id="code"
-                    ref="codeInput"
-                    v-model="form.code"
-                    type="text"
-                    inputmode="numeric"
-                    class="mt-1 block w-full"
-                    autofocus
-                    autocomplete="one-time-code"
-                />
-                <InputError class="mt-2" :message="form.errors.code" />
+    <div class="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col sm:justify-center items-center pt-6 sm:pt-0 px-4">
+        <AuthCard class="w-full sm:max-w-md">
+            <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                <template v-if="! recovery">
+                    {{ $t('auth.two_factor_challenge.code_prompt') }}
+                </template>
+                <template v-else>
+                    {{ $t('auth.two_factor_challenge.recovery_code_prompt') }}
+                </template>
             </div>
 
-            <div v-else>
-                <InputLabel for="recovery_code" value="Recovery Code" />
-                <TextInput
-                    id="recovery_code"
-                    ref="recoveryCodeInput"
-                    v-model="form.recovery_code"
-                    type="text"
-                    class="mt-1 block w-full"
-                    autocomplete="one-time-code"
-                />
-                <InputError class="mt-2" :message="form.errors.recovery_code" />
-            </div>
+            <form @submit.prevent="submit">
+                <div v-if="! recovery">
+                    <AuthInput
+                        :label="$t('auth.two_factor_challenge.code_label')"
+                        type="text"
+                        inputmode="numeric"
+                        v-model="form.code"
+                        :error="form.errors.code"
+                        autofocus
+                        autocomplete="one-time-code"
+                    />
+                </div>
+                <div v-else>
+                    <AuthInput
+                        :label="$t('auth.two_factor_challenge.recovery_code_label')"
+                        type="text"
+                        v-model="form.recovery_code"
+                        :error="form.errors.recovery_code"
+                        autocomplete="one-time-code"
+                    />
+                </div>
 
-            <div class="flex items-center justify-end mt-4">
-                <button type="button" class="text-sm text-gray-600 hover:text-gray-900 underline cursor-pointer" @click.prevent="toggleRecovery">
-                    <template v-if="! recovery">
-                        Use a recovery code
-                    </template>
+                <div class="flex items-center justify-end mt-4">
+                    <button type="button" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline cursor-pointer" @click.prevent="toggleRecovery">
+                        <template v-if="! recovery">
+                            {{ $t('auth.two_factor_challenge.use_recovery_code_button') }}
+                        </template>
+                        <template v-else>
+                            {{ $t('auth.two_factor_challenge.use_authentication_code_button') }}
+                        </template>
+                    </button>
+                </div>
 
-                    <template v-else>
-                        Use an authentication code
-                    </template>
-                </button>
-
-                <PrimaryButton class="ms-4" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                    Log in
-                </PrimaryButton>
-            </div>
-        </form>
-    </AuthenticationCard>
+                <div class="mt-4">
+                     <AuthButton :disabled="form.processing">
+                        <span v-if="form.processing" class="animate-spin h-5 w-5 mr-3 border-t-2 border-b-2 border-primary-50 rounded-full"></span>
+                        {{ $t('auth.two_factor_challenge.login_button') }}
+                    </AuthButton>
+                </div>
+            </form>
+        </AuthCard>
+    </div>
 </template>

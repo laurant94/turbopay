@@ -3,84 +3,158 @@
 namespace App\Services\Payments;
 
 use App\Models\Transaction;
-use App\Services\Payments\MobileMoney\MobileMoneyDriver;
+use App\Http\Enums\ProviderEnum;
 use App\Services\Fees\FeeService;
+use App\Http\Trait\ResolveCustomer;
+use App\Http\Enums\TransactionStatusEnum;
 use App\Services\Webhooks\WebhookService;
 use App\Services\AntiFraud\AntiFraudService;
+use App\Services\Payments\PaymentDriverInterface;
 use App\Services\Payments\Exceptions\InvalidPaymentModeException;
 use App\Services\Payments\Exceptions\InvalidTransactionException;
+use App\Services\Payments\MobileMoney\MtnDriver;
 
 class PaymentService
 {
+    use ResolveCustomer;
+
     public function __construct(
         protected FeeService $feeService,
         protected AntiFraudService $fraudService,
         protected WebhookService $webhookService
     ) {}
 
-    /**
-     * Génère un intent de paiement avant envoi mobile-money.
-     */
-    public function createIntent(Transaction $transaction): Transaction
+
+    public function processMobilePayment(string $token, array|int|string $customerData, string $provider): array
     {
-        if ($transaction->status !== 'pending') {
-            throw new InvalidTransactionException("Transaction is not pending.");
+        // 1. Charger transaction par token
+        $transaction = Transaction::where('payment_token', $token)
+            ->with(['customer'])
+            ->where('payment_token_expires_at', '>', now())
+            ->first();
+
+        if (!$transaction) {
+            return [
+                'success' => false,
+                'message' => 'Invalid or expired token'
+            ];
         }
 
-        // Anti-fraude
-        $this->fraudService->check($transaction);
+        if ($transaction->status !== TransactionStatusEnum::Pending) {
+            return [
+                'success' => false,
+                'message' => 'Transaction already processed'
+            ];
+        }
 
-        // Appliquer les frais
-        [$fees, $net] = $this->feeService->applyFees($transaction);
-        $transaction->fees = $fees;
-        $transaction->net_amount = $net;
+        if(!$transaction->customer || !$transaction?->customer?->phone){
+            if(!isset($customerData['phone'])){
+                return [
+                    'success' => false,
+                    'message' => 'Invalid customer phone',
+                ];
+            }
+
+            $transaction->customer()->associate( $this->resolveCustomer($customerData) );
+            $transaction->save();
+        }
+
+        $transaction->provider = $provider;
         $transaction->save();
 
-        return $transaction;
+        
+
+        // ANTI FRAUD VERIFICATION
+        // $result = $this->fraudService->evaluate($transaction);
+
+        // if ($result['status'] === 'blocked') {
+        //     return $this->markAsFailed($transaction, $result['reason']);
+        // }
+
+        // if ($result['status'] === 'review') {
+        //     $transaction->status = 'manual_review';
+        //     $transaction->save();
+
+        //     return [
+        //         'success' => false,
+        //         'manual_review' => true,
+        //         'message' => $result['reason']
+        //     ];
+        // }
+        // FIN ANTI FRAUD
+
+
+        // 2. Appel provider mobile-money (mock)
+        $providerResponse = $this->mockMobilePayment($transaction, $provider);
+
+        return $providerResponse;
+        
     }
 
-    /**
-     * Lance un paiement mobile-money / carte selon mode.
-     */
-    public function process(Transaction $transaction, string $mode, array $data = []): array
-    {
-        $driver = $this->resolveDriver($mode);
+    public function verifyPayment(string|Transaction $transaction){
 
-        // Step 1 : Appel provider
-        $response = $driver->initiate($transaction, $data);
-
-        if ($response['status'] === 'pending_otp') {
-            return $response; // Retourne OTP au frontend
+        if(! $transaction instanceof Transaction){
+            $transaction = Transaction::findOrFail($transaction);
         }
 
-        return $this->confirm($transaction, $mode);
+        if(!$transaction->provider){
+            return [
+                'success'=> false,
+                'message'=> "No provider found" 
+            ];
+        }
+
+        $driver = $this->resolveDriver($transaction->provider);
+
+        $confirmation = $driver->confirm($transaction); 
+
+        // 3. Si provider OK → succès
+        if (isset($confirmation['status']) && strtolower($confirmation['status']) === TransactionStatusEnum::Successful->value) {
+            return $this->markAsSuccessful($transaction);
+        }
+        elseif(isset($confirmation['status']) && strtolower($confirmation['status']) !== TransactionStatusEnum::Pending->value){
+            // 4. Sinon → échec
+            return $this->markAsFailed($transaction, $confirmation['message']);
+        }
+
+
+        return $confirmation;
     }
 
-    /**
-     * Confirme un paiement.
-     */
-    public function confirm(Transaction $transaction, string $mode): array
+    private function mockMobilePayment(Transaction $transaction, string $provider)
     {
-        $driver = $this->resolveDriver($mode);
-        $response = $driver->confirm($transaction);
+        $driver = $this->resolveDriver($provider);
+        
+        return $driver->initiate($transaction, );
+    }
 
-        if ($response['status'] === 'failed') {
-            $transaction->status = 'failed';
-            $transaction->save();
 
-            $this->webhookService->dispatch('payment.failed', $transaction);
-
-            return $response;
-        }
-
-        $transaction->status = 'successful';
+    private function markAsSuccessful(Transaction $transaction): array
+    {
+        $transaction->status = TransactionStatusEnum::Successful;
         $transaction->paid_at = now();
         $transaction->save();
 
-        $this->webhookService->dispatch('payment.success', $transaction);
+        // TODO: webhook + balance
 
-        return $response;
+        return [
+            'success' => true,
+            'message' => 'Payment completed',
+            'data' => $transaction
+        ];
     }
+
+    private function markAsFailed(Transaction $transaction, string $reason): array
+    {
+        $transaction->status = 'failed';
+        $transaction->save();
+
+        return [
+            'success' => false,
+            'message' => $reason
+        ];
+    }
+
 
     /**
      * Retourne le driver correspondant au mode choisi.
@@ -88,9 +162,11 @@ class PaymentService
     public function resolveDriver(string $mode): PaymentDriverInterface
     {
         return match ($mode) {
-            'mobile' => new MobileMoneyDriver(),
+            ProviderEnum::MTN->value => new MtnDriver(),
             //'card'   => new CardDriver(),
             default  => throw new InvalidPaymentModeException("Invalid payment mode: $mode")
         };
     }
+
+
 }

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->uuid('merchant_id');
             $table->string('firstname')->nullable();
             $table->string('lastname')->nullable();
-            $table->string('email')->nullable();
+            $table->string('email')->unique()->nullable();
 
             $table->string('phone')->nullable();
             $table->timestamps();

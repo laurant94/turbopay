@@ -63,7 +63,10 @@ Route::prefix('transactions')->group(function () {
         ->middleware('require.scope:' . ApiScopeEnum::TRANSACTIONS_TOKEN->value);
 
     // POST /transactions/{mode}
-    Route::post('/process/{mode}', [TransactionController::class, 'process'])
+    Route::post('/process', [TransactionController::class, 'process'])
+        ->middleware('require.scope:' . ApiScopeEnum::TRANSACTIONS_PROCESS->value);
+
+    Route::get('/verify/{id}', [TransactionController::class, 'verify'])
         ->middleware('require.scope:' . ApiScopeEnum::TRANSACTIONS_PROCESS->value);
 });
 

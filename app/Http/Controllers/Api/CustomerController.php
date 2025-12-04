@@ -61,7 +61,7 @@ class CustomerController extends Controller
         $merchant = $request->user();
         $customer = $this->service->findOrFail($merchant, $id);
 
-        $data = $request->only(['email','name','phone']);
+        $data = $request->only(['firstname','lastname','phone']);
         $customer = $this->service->update($merchant, $customer, $data);
 
         return (new CustomerResource($customer))->additional(['success' => true]);
