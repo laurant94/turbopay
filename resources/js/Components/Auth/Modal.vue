@@ -92,6 +92,10 @@ onUnmounted(() => {
                         :class="maxWidthClass"
                     >
                         <slot v-if="show" />
+
+                        <div class="flex justify-end space-x-2 w-full">
+                            <slot name="actions" v-if="$slots.actions" />
+                        </div>
                     </div>
                 </transition>
             </div>

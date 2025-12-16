@@ -1,7 +1,4 @@
 <script setup>
-import { trans } from 'matice';
-import { computed } from 'vue';
-
 defineEmits(['update:modelValue']);
 
 const props = defineProps({
@@ -10,28 +7,67 @@ const props = defineProps({
         required: true,
     },
     modelValue: {
-        type: [String, Number],
-        required: true,
+        type: [String, Number, Object],
+        required: false,
+        default: null,
     },
     error: {
         type: String,
         default: '',
     },
+
+    /**
+     * options peut être :
+     * - ['A', 'B', 'C']
+     * - [{ id: 1, title: 'A' }, { id: 2, title: 'B' }]
+     */
     options: {
         type: Array,
         required: true,
     },
+
+    /**
+     * Comme Vuetify : item-title et item-value
+     */
+    optionLabel: {
+        type: String,
+        default: 'label', // valeur par défaut si array d’objets
+    },
+    optionValue: {
+        type: String,
+        default: 'value',
+    },
+
     placeholder: {
         type: String,
-        default: () => trans('widgets.select_input.default_placeholder'),
-    }
+        default: () => "Selectionner une option",
+    },
 });
 
+/**
+ * Normalisation des options :
+ * Si array simple => convertit en {label, value}
+ * Si array d’objets => utilise optionLabel et optionValue
+ */
+const normalizedOptions = computed(() => {
+    return props.options.map(opt => {
+        if (typeof opt === 'string' || typeof opt === 'number') {
+            return { label: opt, value: opt };
+        }
+
+        return {
+            label: opt[props.optionLabel],
+            value: opt[props.optionValue],
+            raw: opt
+        };
+    });
+});
 </script>
 
 <template>
     <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ label }}</label>
+
         <div class="mt-1 relative rounded-md shadow-sm">
             <select
                 :value="modelValue"
@@ -44,11 +80,19 @@ const props = defineProps({
                 ]"
             >
                 <option value="" disabled>{{ placeholder }}</option>
-                <option v-for="option in options" :key="option.value || option" :value="option.value || option">
-                    {{ option.label || option }}
+
+                <option
+                    v-for="opt in normalizedOptions"
+                    :key="opt.value"
+                    :value="opt.value"
+                >
+                    {{ opt.label }}
                 </option>
             </select>
         </div>
-        <p v-if="error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+
+        <p v-if="error" class="mt-2 text-sm text-red-600 dark:text-red-400">
+            {{ error }}
+        </p>
     </div>
 </template>

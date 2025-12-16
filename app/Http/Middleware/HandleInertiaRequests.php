@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\User;
 use Inertia\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -37,12 +38,28 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
 
-        
+        $user = Auth::user();
         $menus = $this->getUserMenu($request->user());
-        
+        $merchants = Auth::check() ? $user->merchants : [];
+        // $currentMerchant = Auth::check() && Auth::user()->merchants()->count() > 0 ? 
+        //     Auth::user()->merchants()->first();
+        $currentMerchant = function() use ($user){
+            if(session('merchant') && Auth::check()){
+                return $user->merchants->findOrFail(session('merchant'));
+            }
+            elseif(Auth::check() && !session('merchant')){
+                return  $user->merchants()->first();
+            }
+            return null;
+        };
+
 
         return [
             ...parent::share($request),
+            'merchants' => $merchants,
+            'currentMerchant'=> $currentMerchant,
+            
+            // 'current_merchant'=> $currentMerchant,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' =>  fn() => $request->session()->get('error'),
@@ -107,7 +124,7 @@ class HandleInertiaRequests extends Middleware
 
             [
                 'label' => 'Api',
-                'route' => 'dashboard', // Default dashboard, specific dashboards will be handled by permissions
+                'route' => 'user.apiKeys.index', // Default dashboard, specific dashboards will be handled by permissions
                 'params' => [],
                 'permissions' => ['view-any-appointment', 'view-any-order', 'view-any-product', 'view-any-queue', 'view-any-user'], // Example: if user has any of these, they can see dashboard
                 'category' => 'Développeur',

@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\MerchantController;
 use App\Http\Controllers\Web\TransactionController;
+use App\Http\Middleware\VerifyUserMerchantAvailability;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -35,10 +37,11 @@ Route::middleware([
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
-    
 
 
-    route::name('user.')->prefix("merchant/{merchant}")
+    route::name('user.')
+    ->middleware(VerifyUserMerchantAvailability::class)
+    ->prefix("merchant")
         ->group(base_path("routes/user/web.php"));
 
 });

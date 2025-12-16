@@ -18,12 +18,9 @@ const showingSidebar = ref(false);
 
 // Computed properties
 const user = computed(() => page.props.auth.user);
-const userHospitals = computed(() => page.props.user_hospitals || []);
-const currentHospital = computed(() => {
-    const hospitalId = page.props.current_hospital?.id;
-    if (!hospitalId || !userHospitals.value) return null;
-    return userHospitals.value.find(h => h.id == hospitalId);
-});
+const userMerchants = computed(() => page.props.merchants || []);
+const activeMerchant = computed(() => page.props.currentMerchant);
+
 const mainMenu = computed(() => {
     const categorizedMenuItems = page.props.main_menu || {};
     const processedMenu = {};
@@ -61,6 +58,15 @@ const getHospitalRoute = (hospitalId) => {
     } catch (e) {
         return route('hospital.dashboard', { hospital: hospitalId });
     }
+};
+
+const switchMerchant = (merchantId) => {
+    router.post(route('user.merchants.switch', merchantId), {
+        merchant_id: merchantId
+    }, {
+        preserveState: false, // Reload the page to get the new active merchant
+        preserveScroll: true,
+    });
 };
 
 const logout = () => {
@@ -126,30 +132,32 @@ const toggleTheme = () => {
                 </Link>
             </div>
 
-            <!-- Hospital Switcher -->
-            <div v-if="currentHospital" class="p-4 border-b border-gray-200 dark:border-gray-700">
-                <VDropdown :distance="10" placement="bottom-start">
+            <!-- Merchant Switcher -->
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex space-x-2">
+                <VDropdown v-if="activeMerchant" :distance="10" placement="bottom-start" class="w-full">
                     <button class="w-full flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded-md focus:outline-none">
-                        <span class="font-semibold text-gray-800 dark:text-gray-200">{{ currentHospital.name }}</span>
+                        <span class="font-semibold text-gray-800 dark:text-gray-200">{{ activeMerchant.name }}</span>
                         <svg class="h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
                         </svg>
                     </button>
                     <template #popper>
                         <div class="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-md shadow-xl text-sm w-56">
-                            <Link
-                                v-for="hospital in userHospitals"
-                                :key="hospital.id"
-                                :href="getHospitalRoute(hospital.id)"
-                                class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            <button
+                                v-for="merchant in userMerchants"
+                                :key="merchant.id"
+                                @click="switchMerchant(merchant.id)"
+                                class="block text-left w-full px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                             >
-                                {{ hospital.name }}
-                            </Link>
+                                {{ merchant.name }}
+                            </button>
                         </div>
                     </template>
                 </VDropdown>
+                <CreateMerchantButton />
             </div>
 
+          
             <!-- Navigation -->
             <nav class="flex-1 p-4 space-y-2 overflow-y-auto hide-scrollbar">
                 <div v-for="(categoryItems, categoryName) in mainMenu" :key="categoryName" class="mb-4">

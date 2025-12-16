@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { Link } from '@inertiajs/vue3';
 
 const props = defineProps({
     type: {
@@ -9,6 +10,10 @@ const props = defineProps({
     disabled: {
         type: Boolean,
         default: false,
+    },
+    href: {
+        required: false,
+        type: String
     },
     variant: {
         type: String,
@@ -35,12 +40,13 @@ const variantClasses = computed(() => {
 </script>
 
 <template>
-    <button
-        :type="type"
+    <component 
+        :is="href ? Link : 'button'"
+        :type="href ? null : type"
         :disabled="disabled"
         class="flex justify-center border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2"
         :class="[variantClasses, { 'opacity-50 cursor-not-allowed': disabled, 'py-3 px-4': !dense, 'py-2 px-2': dense }]"
     >
         <slot />
-    </button>
+    </component>
 </template>

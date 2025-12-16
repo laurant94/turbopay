@@ -14,7 +14,7 @@ class CurrencySeeder extends Seeder
     public function run(): void
     {
         $currencies = [
-            ['code' => 'XOF', 'name' => 'West African CFA Franc', 'decimals' => 0, 'symbol' => 'F'],
+            ['code' => 'XOF', 'name' => 'F CFA', 'decimals' => 0, 'symbol' => 'F'],
             ['code' => 'USD', 'name' => 'US Dollar', 'decimals' => 2, 'symbol' => '$'],
             ['code' => 'EUR', 'name' => 'Euro', 'decimals' => 2, 'symbol' => '€'],
         ];

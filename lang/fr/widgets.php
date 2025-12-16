@@ -19,4 +19,11 @@ return [
     'select_input' => [
         'default_placeholder' => '-- Choisissez une option --',
     ],
+    'status'=> [
+        'pending'=> "En attente",
+        'successful'=> "Terminé",
+        'failed' => "Echoué",
+        'refunded'=> "Remboursé",
+        'partially_refunded'=> "Partiellement remboursé"
+    ]
 ];

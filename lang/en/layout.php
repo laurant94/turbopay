@@ -2,7 +2,8 @@
 
 return [
     'user_dropdown' => [
-        'profile_link' => 'Profil',
-        'logout_button' => 'Se déconnecter',
+        'profile_link' => 'Profile',
+        'logout_button' => 'Log Out',
+        'add_merchant' => 'Add Merchant Account',
     ],
 ];

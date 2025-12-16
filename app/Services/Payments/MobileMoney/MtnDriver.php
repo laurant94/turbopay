@@ -30,13 +30,15 @@ class MtnDriver implements PaymentDriverInterface
 
 
     protected function createPayment(Transaction $transaction): array{
+        $apiToken = settings()->get("mtnbenin-api-token", "no-token");
+        
         $response = Http::withoutVerifying()
         ->withHeaders([
             "Content-Type"=> "application/json",
             "X-Target-Environment" => env("MTN_ENV"),
             "Ocp-Apim-Subscription-Key" => env("MTN_COLLECTION_KEY"),
             "X-Reference-Id" => $transaction->reference,
-            "Authorization" => "Bearer " . env('MTN_TOKEN')
+            "Authorization" => "Bearer " . $apiToken, 
         ])
         ->post(env("MTN_BASE_URL").'/collection/v1_0/requesttopay', [
             "amount" => $transaction->amount,
@@ -59,10 +61,12 @@ class MtnDriver implements PaymentDriverInterface
     }
 
     protected function getPaymentStatus(Transaction $transaction): array{
+        $apiToken = settings()->get("mtnbenin-api-token", "no-token");
+
         $response = Http::withoutVerifying()
         ->withHeaders([
             "Content-Type"=> "application/json",
-            "Authorization" => "Bearer " . env('MTN_TOKEN'),
+            "Authorization" => "Bearer " . $apiToken,
             "X-Target-Environment" => env("MTN_ENV"),
             "Ocp-Apim-Subscription-Key" => env("MTN_COLLECTION_KEY"),
         ])
