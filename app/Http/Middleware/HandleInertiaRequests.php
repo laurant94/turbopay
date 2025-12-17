@@ -139,16 +139,16 @@ class HandleInertiaRequests extends Middleware
             ],
             [
                 'label' => 'Evènements',
-                'route' => 'dashboard', // Default dashboard, specific dashboards will be handled by permissions
+                'route' => 'user.events.index', // Default dashboard, specific dashboards will be handled by permissions
                 'params' => [],
                 'permissions' => ['view-any-appointment', 'view-any-order', 'view-any-product', 'view-any-queue', 'view-any-user'], // Example: if user has any of these, they can see dashboard
                 'category' => 'Développeur',
             ],
             [
                 'label' => 'Logs',
-                'route' => 'dashboard', // Default dashboard, specific dashboards will be handled by permissions
+                'route' => 'user.audit-logs.index', // Update the route
                 'params' => [],
-                'permissions' => ['view-any-appointment', 'view-any-order', 'view-any-product', 'view-any-queue', 'view-any-user'], // Example: if user has any of these, they can see dashboard
+                'permissions' => ['view-any-appointment', 'view-any-order', 'view-any-product', 'view-any-queue', 'view-any-user'],
                 'category' => 'Développeur',
             ],
             [

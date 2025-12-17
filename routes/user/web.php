@@ -22,3 +22,11 @@ Route::post("transactions/{transaction}/generate-payment-token", [TransactionCon
 Route::resource("apiKeys", ApiKeyController::class)->only([
     'index', 'store',
 ]);
+
+Route::resource("events", \App\Http\Controllers\User\EventController::class)->only([
+    'index',
+]);
+
+Route::resource("audit-logs", \App\Http\Controllers\User\AuditLogController::class)->only([
+    'index',
+]);

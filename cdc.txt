@@ -320,3 +320,31 @@ Toutes les clés étrangères merchant_id sont indexées ; on cascade delete sur
    - unverified : créé, pas encore validé  
    - verified : micro-dépôts ou code reçus et saisis  
    - invalid : données rejetées par le réseau bancaire ou opérateur
+
+
+
+
+Events
+
+
+payment_request.transferred
+payment_request.declined
+payment_request.canceled
+payment_request.approved
+payment_request.created
+payout.started
+payout.sent
+payout.failed
+payout.deleted
+payout.updated
+payout.created
+transaction.transferred
+transaction.refunded
+transaction.deleted
+transaction.canceled
+transaction.declined
+transaction.approved
+transaction.created
+customer.updated
+customer.deleted
+customer.created
