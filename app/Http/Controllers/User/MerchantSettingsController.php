@@ -23,8 +23,9 @@ class MerchantSettingsController extends Controller
         ]);
     }
 
-    public function update(Request $request, Merchant $merchant)
+    public function store(Request $request)
     {
+        $merchant = $this->getMerchant();
         // Ensure the user is authorized to update this merchant's settings
         if ($request->user()->id !== $merchant->user_id) {
             abort(403);
@@ -39,7 +40,7 @@ class MerchantSettingsController extends Controller
         return back()->with('success', 'Settings updated.');
     }
 
-    
+
 
     protected function getMerchant(): Merchant{
         $merchantId = session('merchant');

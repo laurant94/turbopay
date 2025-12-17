@@ -17,7 +17,7 @@ const form = useForm({
 });
 
 const updateFeeSettings = () => {
-    form.put(route('merchants.settings.update', { merchant: props.merchant.id }), {
+    form.post(route('user.merchants.settings.store', { merchant: props.merchant.id }), {
         errorBag: 'updateFeeSettings',
         preserveScroll: true,
     });
