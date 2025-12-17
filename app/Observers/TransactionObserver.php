@@ -9,7 +9,7 @@ class TransactionObserver
 {
 
     public function creating(Transaction $transaction): void{
-        // $this->updateTransactionTaxes($transaction);
+        $this->updateTransactionTaxes($transaction);
     }
 
     /**
@@ -55,32 +55,46 @@ class TransactionObserver
 
 
     protected function updateTransactionTaxes(Transaction $transaction){
-        $merchantId = $transaction->merchant_id;
+        $merchant = $transaction->merchant;
+
+        // Déterminer qui paie les frais à partir des paramètres du marchand
+        // Par défaut, le marchand paie.
+        $feePayer = $merchant->settings()->get('merchant.fees.payer', 'merchant');
 
         // Recherche du fee applicable
-        $fee = Fee::where('merchant_id', $merchantId)
+        $fee = Fee::where('merchant_id', $merchant->id)
             ->where('currency', $transaction->currency)
             ->where('scope', $transaction->scope ?? env('DEFAULT_ENVIRONMENT', 'sandbox'))
             ->where('min_amount', '<=', $transaction->amount)
             ->where('max_amount', '>=', $transaction->amount)
             ->first();
 
-        if (!$fee) {
-            // fallback : aucun fee → frais 0
-            $transaction->fees = env('DEFAULT_FEE', 1.5);
-            $transaction->net_amount = $transaction->amount;
-            return;
+        $totalFees = 0;
+
+        if ($fee) {
+            // Calcul des frais
+            $percentFee = ($transaction->amount * ($fee->percent / 100));
+            $fixedFee   = $fee->fixed;
+            $totalFees = (int) floor($percentFee + $fixedFee);
+        } else {
+            // Fallback: utiliser un taux de frais par défaut si aucune règle n'est trouvée
+            $defaultFeePercent = (float) env('DEFAULT_FEE', 1.5);
+            $totalFees = (int) floor($transaction->amount * ($defaultFeePercent / 100));
         }
 
-        // Calcul des frais
-        $percentFee = ($transaction->amount * ($fee->percent / 100));
-        $fixedFee   = $fee->fixed;
-
-        $totalFees = (int) floor($percentFee + $fixedFee);
-
-        // Affectation
         $transaction->fees = $totalFees;
-        $transaction->net_amount = $transaction->amount - $totalFees;
+
+        if ($feePayer === 'customer') {
+            // Le client paie les frais.
+            // Le montant net pour le marchand est le montant de base de la transaction.
+            $transaction->net_amount = $transaction->amount;
+            // Le montant total de la transaction est augmenté des frais.
+            $transaction->amount = $transaction->amount + $totalFees;
+        } else {
+            // Le marchand paie les frais (comportement par défaut).
+            // Le montant net pour le marchand est le montant de la transaction moins les frais.
+            $transaction->net_amount = $transaction->amount - $totalFees;
+        }
     }
 
 }

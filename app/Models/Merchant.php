@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Sanctum\HasApiTokens;
+use Rawilk\Settings\Models\HasSettings;
 
 class Merchant extends Model
 {
 
     use HasFactory, SoftDeletes, HasUuids;
-    use HasApiTokens;
+    use HasApiTokens, HasSettings;
 
     protected $fillable = [
         'user_id', 'name', 'registration_number', 'tax_id', 'address', 'country',
