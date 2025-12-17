@@ -35,8 +35,9 @@ const variants = {
         :type="href ? null : type"
         :class="[
             dense ? 'px-2 py-2' : 'px-4 py-2',
+            'disabled:opacity-5',
             'inline-flex items-center rounded-md font-semibold text-xs uppercase tracking-widest focus:outline-none focus:ring transition',
-            variants[variant] ?? variants.primary
+            variants[variant] ?? variants.primary,
         ]"
     >
         <slot />

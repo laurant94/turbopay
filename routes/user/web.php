@@ -16,5 +16,5 @@ Route::post("transactions/{transaction}/generate-payment-token", [TransactionCon
     ->name("transactions.generate-token");
 
 Route::resource("apiKeys", ApiKeyController::class)->only([
-    'index', 'create',
+    'index', 'store',
 ]);

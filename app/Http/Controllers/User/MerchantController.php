@@ -26,21 +26,21 @@ class MerchantController extends Controller
         $merchant = $request->user()->merchants()->create($data);
 
 
-        // Api keys creation
-        ApiKeyService::generate(
-            $merchant,
-            'Clé publique',
-            'public',
-            ApiScopeEnum::publicScopes()
-        );
+        // // Api keys creation
+        // ApiKeyService::generate(
+        //     $merchant,
+        //     'Clé publique',
+        //     'public',
+        //     ApiScopeEnum::publicScopes()
+        // );
 
-        // Générer aussi une clé privée (secret)
-        ApiKeyService::generate(
-            $merchant,
-            'Clé privée',
-            'secret',
-            ApiScopeEnum::privateScopes()
-        );
+        // // Générer aussi une clé privée (secret)
+        // ApiKeyService::generate(
+        //     $merchant,
+        //     'Clé privée',
+        //     'secret',
+        //     ApiScopeEnum::privateScopes()
+        // );
 
 
         $request->session()->put("merchant", $merchant->id);

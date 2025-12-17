@@ -4,6 +4,8 @@ namespace App\Http\Controllers\User;
 
 use App\Models\Merchant;
 use Illuminate\Http\Request;
+use App\Services\ApiKeyService;
+use App\Http\Enums\ApiScopeEnum;
 use App\Http\Controllers\Controller;
 
 class ApiKeyController extends Controller
@@ -22,6 +24,10 @@ class ApiKeyController extends Controller
                 'key'=> 'key_prefix'
             ],
             [
+                'label'=> "Création",
+                'key'=> 'created_at'
+            ],
+            [
                 'label'=> "Dernière utilisation",
                 'key'=> 'last_used_at'
             ],
@@ -34,6 +40,34 @@ class ApiKeyController extends Controller
         return inertia('ApiKey/Index', [
             'items'=> $keys,
             'headers'=> $headers,
+        ]);
+    }
+
+    public function store(Request $request){
+        $merchant = $this->getMerchant();
+        $merchant->apiKeys()->update([
+            'active'=> false,
+        ]);
+
+         // Api keys creation
+        $public = ApiKeyService::generate(
+            $merchant,
+            'Clé publique',
+            'public',
+            ApiScopeEnum::publicScopes()
+        );
+
+        // Générer aussi une clé privée (secret)
+        $private = ApiKeyService::generate(
+            $merchant,
+            'Clé privée',
+            'secret',
+            ApiScopeEnum::privateScopes()
+        );
+
+        return to_route("user.apiKeys.index")->with("datas", [
+            'public'=> $public,
+            'private'=> $private,
         ]);
     }
 
