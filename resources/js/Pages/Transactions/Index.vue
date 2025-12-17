@@ -24,6 +24,11 @@ const transactions = computed(()=>{
     })
 })
 
+
+onMounted(()=>{
+    // console.log(props.customers, props.currencies)
+})
+
 </script>
 
 <template>

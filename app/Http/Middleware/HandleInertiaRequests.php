@@ -123,6 +123,14 @@ class HandleInertiaRequests extends Middleware
             ],
 
             [
+                'label' => 'Paramètres',
+                'route' => 'user.merchants.settings.index', // Default dashboard, specific dashboards will be handled by permissions
+                'params' => [],
+                'permissions' => ['view-any-appointment', 'view-any-order', 'view-any-product', 'view-any-queue', 'view-any-user'], // Example: if user has any of these, they can see dashboard
+                'category' => 'Settings',
+            ],
+
+            [
                 'label' => 'Api',
                 'route' => 'user.apiKeys.index', // Default dashboard, specific dashboards will be handled by permissions
                 'params' => [],

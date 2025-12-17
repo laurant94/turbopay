@@ -12,7 +12,7 @@ const submit = ()=>{
     form.post(route('user.merchants.store'), {
         onSuccess: ()=>{
             emit('created')
-        }
+        },
     })
 }
 

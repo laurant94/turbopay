@@ -12,7 +12,7 @@ const props = defineProps({
 });
 
 const form = useForm({
-    _method: 'PUT',
+    _method: 'POST',
     fee_payer: props.fee_payer,
 });
 

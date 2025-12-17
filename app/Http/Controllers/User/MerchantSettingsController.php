@@ -9,8 +9,9 @@ use Inertia\Inertia;
 
 class MerchantSettingsController extends Controller
 {
-    public function show(Request $request, Merchant $merchant)
+    public function index(Request $request)
     {
+        $merchant = $this->getMerchant();
         // Ensure the user is authorized to see this merchant's settings
         if ($request->user()->id !== $merchant->user_id) {
             abort(403);
@@ -36,5 +37,18 @@ class MerchantSettingsController extends Controller
         $merchant->settings()->set('merchant.fees.payer', $request->input('fee_payer'));
 
         return back()->with('success', 'Settings updated.');
+    }
+
+    
+
+    protected function getMerchant(): Merchant{
+        $merchantId = session('merchant');
+        if(!$merchantId){
+            return abort(404, "Aucun marchant trouvé");
+        }
+
+        $merchant = Merchant::findOrFail($merchantId);
+
+        return $merchant;
     }
 }

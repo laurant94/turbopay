@@ -56,7 +56,7 @@ declare module 'vue' {
     SecondaryButton: typeof import('./resources/js/Components/SecondaryButton.vue')['default']
     SectionBorder: typeof import('./resources/js/Components/SectionBorder.vue')['default']
     SectionTitle: typeof import('./resources/js/Components/SectionTitle.vue')['default']
-    SelectInput: typeof import('./resources/js/Components/Widgets/SelectInput.vue')['default']
+    SelectInput: typeof import('./resources/js/Components/SelectInput.vue')['default']
     TextInput: typeof import('./resources/js/Components/TextInput.vue')['default']
     Welcome: typeof import('./resources/js/Components/Welcome.vue')['default']
   }
