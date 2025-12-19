@@ -4,7 +4,7 @@ namespace App\Services\Payments\Authenticator;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Rawilk\Settings\Models\Setting;
+use Rawilk\Settings\Settings;
 
 class MtnAuthenticator{
 
@@ -20,10 +20,13 @@ class MtnAuthenticator{
 
         if($response->status() === 200){
             $token = $response->json("access_token");
+
             settings()->set("mtnbenin_api_token", $token);
+            return $token;
         }
         else{
-            Settings()->set('error_code', $response->status());
+            settings()->set('error_code', $response->status());
+            return $response->status();
         }
     }
 }

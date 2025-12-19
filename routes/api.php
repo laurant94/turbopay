@@ -9,7 +9,7 @@ Route::get('/user', function (Request $request) {
 
 
 Route::prefix("v1")->name("api.")
-    ->middleware(['auth.apikey'])
+    ->middleware(['auth.apikey', \App\Http\Middleware\LogApiActions::class])
     ->group(base_path("routes/payment/api.php"));
 
 Route::prefix("v1")->name("api.")

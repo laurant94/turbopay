@@ -153,9 +153,16 @@ class HandleInertiaRequests extends Middleware
             ],
             [
                 'label' => 'Webhooks',
-                'route' => 'dashboard', // Default dashboard, specific dashboards will be handled by permissions
+                'route' => 'user.webhook-endpoints.index',
                 'params' => [],
-                'permissions' => ['view-any-appointment', 'view-any-order', 'view-any-product', 'view-any-queue', 'view-any-user'], // Example: if user has any of these, they can see dashboard
+                'permissions' => ['view-any-appointment', 'view-any-order', 'view-any-product', 'view-any-queue', 'view-any-user'],
+                'category' => 'Développeur',
+            ],
+            [
+                'label' => 'Événements Webhook envoyés', // New menu item
+                'route' => 'user.webhook-events.index', // New route
+                'params' => [],
+                'permissions' => ['view-any-appointment', 'view-any-order', 'view-any-product', 'view-any-queue', 'view-any-user'],
                 'category' => 'Développeur',
             ],
             

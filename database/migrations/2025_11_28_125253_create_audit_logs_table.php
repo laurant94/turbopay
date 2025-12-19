@@ -13,20 +13,28 @@ return new class extends Migration
     {
         Schema::create('audit_logs', function (Blueprint $table) {
             $table->id();
-            $table->string('user_type',20);
+            $table->string('user_type', 255); // Increased length
             $table->bigInteger('user_id')->nullable();
             $table->uuid('merchant_id')->nullable();
             $table->string('event',50);
-            $table->string('auditable_type',100);
-            $table->bigInteger('auditable_id');
+            $table->string('method', 10)->nullable(); // New: HTTP method (e.g., GET, POST)
+            $table->string('path')->nullable(); // New: Full request path
+            $table->integer('response_status')->nullable(); // New: HTTP response status
+            $table->string('auditable_type',100)->nullable(); // Added nullable
+            $table->string('auditable_id', 36)->nullable(); // Changed to string for UUIDs, and made nullable
             $table->json('old_values')->nullable();
             $table->json('new_values')->nullable();
-            $table->string('ip',45);
-            $table->text('user_agent');
-            $table->timestamp('created_at')->useCurrent();
+            $table->string('ip',45)->nullable(); // Make nullable
+            $table->text('user_agent')->nullable(); // Make nullable
+            $table->timestamps();
             $table->softDeletes();
 
             $table->foreign('merchant_id')->references('id')->on('merchants')->cascadeOnDelete();
+
+            // Add indexes for performance
+            $table->index(['auditable_type', 'auditable_id']);
+            $table->index(['user_type', 'user_id']);
+            $table->index('event');
         });
     }
 

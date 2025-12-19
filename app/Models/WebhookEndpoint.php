@@ -10,11 +10,12 @@ class WebhookEndpoint extends Model
     use HasFactory;
 
     protected $fillable = [
-        'merchant_id', 'url', 'secret', 'events', 'active'
+        'merchant_id', 'url', 'secret', 'events', 'headers', 'active' // Added 'headers'
     ];
 
     protected $casts = [
         'events' => 'array',
+        'headers' => 'array', // Cast 'headers' to array
         'active' => 'boolean',
     ];
 

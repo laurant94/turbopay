@@ -16,7 +16,8 @@ return new class extends Migration
             $table->uuid('merchant_id');
             $table->text('url');
             $table->string('secret',64);
-            $table->json('events');
+            $table->json('events')->nullable(); // Make the 'events' column nullable
+            $table->json('headers')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
             $table->softDeletes();

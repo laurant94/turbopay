@@ -3,12 +3,21 @@
 namespace App\Services\Payments\MobileMoney;
 
 use App\Models\Transaction;
+use App\Services\Payments\Authenticator\MtnAuthenticator;
 use App\Services\Payments\PaymentDriverInterface;
 use App\Services\Payments\Exceptions\PaymentFailedException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class MtnDriver implements PaymentDriverInterface
 {
+
+    public function __construct()
+    {
+        $token = MtnAuthenticator::auth();
+        Log::alert($token);
+    }
+
     public function initiate(Transaction $transaction, array $data = []): array
     {
         // Simule un appel externe de mobile money

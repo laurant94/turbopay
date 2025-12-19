@@ -11,6 +11,6 @@ Artisan::command('inspire', function () {
 
 
 Schedule::job(new ProviderAuthTokenJob)
-->cron('0,47 * * * *')   // every hour at minute 0 and 40
+->cron('0,05 * * * *')   // every hour at minute 0 and 40
 ->withoutOverlapping()   // avoid duplicates if previous run still active
 ->onOneServer();    

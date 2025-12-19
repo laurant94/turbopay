@@ -4,20 +4,26 @@ import Container from '@/Components/Widgets/Container.vue';
 import DataTable from '@/Components/Widgets/DataTable.vue';
 import { computed } from 'vue';
 import { trans } from 'matice';
+import { formatDate } from '../helpers';
 
 const props = defineProps({
     logs: Object,
 });
 
 const headers = [
-    { key: 'event', label: 'Événement' },
-    { key: 'auditable_type', label: 'Type auditée' },
-    { key: 'auditable_id', label: 'ID auditée' },
-    { key: 'user_type', label: 'Type utilisateur' },
-    { key: 'user_id', label: 'ID Utilisateur' },
+    { key: 'method', label: 'Methode' },
+    { key: 'response_status', label: 'Status' },
+    { key: 'path', label: 'Path' },
     { key: 'ip', label: 'IP' },
-    { key: 'old_values', label: 'Anciennes valeurs' },
-    { key: 'new_values', label: 'Nouvelles valeurs' },
+    { key: 'created_at', label: 'Date' },
+
+
+    // { key: 'auditable_type', label: 'Type auditée' },
+    // { key: 'auditable_id', label: 'ID auditée' },
+    // { key: 'user_type', label: 'Type utilisateur' },
+    // { key: 'user_id', label: 'ID Utilisateur' },
+    // { key: 'old_values', label: 'Anciennes valeurs' },
+    // { key: 'new_values', label: 'Nouvelles valeurs' },
 ];
 
 const formattedLogs = computed(() => {
@@ -27,6 +33,7 @@ const formattedLogs = computed(() => {
             // You might want to format these for better display, e.g., JSON.stringify for objects
             old_values: item.old_values ? JSON.stringify(item.old_values) : '-',
             new_values: item.new_values ? JSON.stringify(item.new_values) : '-',
+            created_at: formatDate(item.created_at, {mode: 'datetime'})
         };
     });
 });

@@ -30,3 +30,10 @@ Route::resource("events", \App\Http\Controllers\User\EventController::class)->on
 Route::resource("audit-logs", \App\Http\Controllers\User\AuditLogController::class)->only([
     'index',
 ]);
+
+Route::resource("webhook-endpoints", \App\Http\Controllers\User\WebhookEndpointController::class);
+
+Route::resource("webhook-events", \App\Http\Controllers\User\WebhookEventController::class)->only([
+    'index',
+]);
+

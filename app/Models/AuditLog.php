@@ -10,10 +10,11 @@ class AuditLog extends Model
 {
     use HasFactory, SoftDeletes;
     
-    public $timestamps = false;
+
 
     protected $fillable = [
         'user_type', 'user_id', 'merchant_id', 'event',
+        'method', 'path', 'response_status', // Added new fields
         'auditable_type', 'auditable_id', 'old_values',
         'new_values', 'ip', 'user_agent'
     ];
